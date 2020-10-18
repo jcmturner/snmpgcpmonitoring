@@ -66,7 +66,7 @@ func createDescriptors(client *monitoring.MetricClient, t *target.Target, verbos
 				return fmt.Errorf("error creating descriptor %s: %v", req.Name, err)
 			}
 			if verbose {
-				log.Printf("created metric descriptor: %s", req.MetricDescriptor.Type)
+				log.Printf("created metric descriptor: %s\n", req.MetricDescriptor.Type)
 			}
 		}
 	}
@@ -144,7 +144,7 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 			}},
 		})
 		if verbose {
-			log.Printf("adding timeseries data for %s at %v", typ, t.CollectTime)
+			log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
 		}
 	}
 
@@ -167,7 +167,7 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 			}},
 		})
 		if verbose {
-			log.Printf("adding timeseries data for %s at %v", typ, t.CollectTime)
+			log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
 		}
 		typ = fmt.Sprintf("%s/storage/%s/size", prefix, strings.ReplaceAll(strg, " ", "_"))
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
@@ -187,7 +187,7 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 			}},
 		})
 		if verbose {
-			log.Printf("adding timeseries data for %s at %v", typ, t.CollectTime)
+			log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
 		}
 	}
 	for iface, info := range t.Ifaces {
@@ -209,7 +209,7 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 			}},
 		})
 		if verbose {
-			log.Printf("adding timeseries data for %s at %v", typ, t.CollectTime)
+			log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
 		}
 		typ = fmt.Sprintf("%s/interface/%s/rxrate", prefix, strings.ReplaceAll(iface, " ", "_"))
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
@@ -229,7 +229,7 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 			}},
 		})
 		if verbose {
-			log.Printf("adding timeseries data for %s at %v", typ, t.CollectTime)
+			log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
 		}
 	}
 

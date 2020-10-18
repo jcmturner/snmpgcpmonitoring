@@ -33,20 +33,20 @@ func Run(t *target.Target, client *monitoring.MetricClient, wg *sync.WaitGroup, 
 	for {
 		err := CPU(t, verbose)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "cpu metrics collection error: %v", err)
+			fmt.Fprintf(os.Stderr, "cpu metrics collection error: %v\n", err)
 		}
 		err = Storage(t, verbose)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "storage metrics collection error: %v", err)
+			fmt.Fprintf(os.Stderr, "storage metrics collection error: %v\n", err)
 		}
 		err = Inferface(t, verbose)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "interface metrics collection error: %v", err)
+			fmt.Fprintf(os.Stderr, "interface metrics collection error: %v\n", err)
 		}
 		t.CollectTime = time.Now().UTC()
 		err = store.Metrics(client, t, verbose)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error storing metrics: %v", err)
+			fmt.Fprintf(os.Stderr, "error storing metrics: %v\n", err)
 		}
 		time.Sleep(t.Duration)
 	}
@@ -98,18 +98,18 @@ func Storage(t *target.Target, verbose bool) error {
 		switch oidHead {
 		case hrStorageAllocationUnits:
 			if verbose {
-				log.Printf("processing SNMP response for hrStorageAllocationUnits from %s for %s", t.Name, stDescr)
+				log.Printf("processing SNMP response for hrStorageAllocationUnits from %s for %s\n", t.Name, stDescr)
 			}
 			stInfo.Multiplier = gosnmp.ToBigInt(variable.Value)
 		case hrStorageUsed:
 			if verbose {
-				log.Printf("processing SNMP response for hrStorageUsed from %s for %s", t.Name, stDescr)
+				log.Printf("processing SNMP response for hrStorageUsed from %s for %s\n", t.Name, stDescr)
 			}
 			stInfo.Used = gosnmp.ToBigInt(variable.Value)
 			stInfo.Timestamp = ts
 		case hrStorageSize:
 			if verbose {
-				log.Printf("processing SNMP response for hrStorageSize from %s for %s", t.Name, stDescr)
+				log.Printf("processing SNMP response for hrStorageSize from %s for %s\n", t.Name, stDescr)
 			}
 			stInfo.Size = gosnmp.ToBigInt(variable.Value)
 		}
@@ -149,12 +149,12 @@ func Inferface(t *target.Target, verbose bool) error {
 		switch oidHead {
 		case ifSpeed:
 			if verbose {
-				log.Printf("processing SNMP response for ifSpeed from %s for %s", t.Name, desc)
+				log.Printf("processing SNMP response for ifSpeed from %s for %s\n", t.Name, desc)
 			}
 			ifInfo.Speed = gosnmp.ToBigInt(variable.Value)
 		case ifHCInOctets:
 			if verbose {
-				log.Printf("processing SNMP response for ifHCInOctets from %s for %s", t.Name, desc)
+				log.Printf("processing SNMP response for ifHCInOctets from %s for %s\n", t.Name, desc)
 			}
 			ifInfo.Delta = ts.Sub(ifInfo.Timestamp)
 			ifInfo.Timestamp = ts
@@ -164,7 +164,7 @@ func Inferface(t *target.Target, verbose bool) error {
 			ifInfo.InBits = v
 		case ifHCOutOctets:
 			if verbose {
-				log.Printf("processing SNMP response for ifHCOutOctets from %s for %s", t.Name, desc)
+				log.Printf("processing SNMP response for ifHCOutOctets from %s for %s\n", t.Name, desc)
 			}
 			v := new(big.Int)
 			v.Mul(gosnmp.ToBigInt(variable.Value), eight)
@@ -205,7 +205,7 @@ func walkHRProcLoad(t *target.Target, verbose bool) gosnmp.WalkFunc {
 		v := gosnmp.ToBigInt(dataUnit.Value)
 		t.CPU[oid[len(oid)-1]] = v.Int64()
 		if verbose {
-			log.Printf("processing CPU load response from %s for CPU(%s)", t.Name, oid[len(oid)-1])
+			log.Printf("processing CPU load response from %s for CPU(%s)\n", t.Name, oid[len(oid)-1])
 		}
 		return nil
 	}
@@ -223,7 +223,7 @@ func walkHRStorage(t *target.Target, verbose bool) gosnmp.WalkFunc {
 			t.Storage[desc] = info.NewStorage(desc, oidTail)
 			t.StrgIndex[oidTail] = desc
 			if verbose {
-				log.Printf("storage %s on %s added for tracking", desc, t.Name)
+				log.Printf("storage %s on %s added for tracking\n", desc, t.Name)
 			}
 		}
 		return nil
