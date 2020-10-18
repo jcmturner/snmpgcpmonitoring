@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -31,7 +32,7 @@ func Initialise() (*monitoring.MetricClient, error) {
 	return monitoring.NewMetricClient(ctx, option.WithCredentialsFile(credsfile)) // TODO consider the options that can be passed here
 }
 
-func createDescriptors(client *monitoring.MetricClient, t *target.Target) error {
+func createDescriptors(client *monitoring.MetricClient, t *target.Target, verbose bool) error {
 	ctx := context.Background()
 
 	projectID := os.Getenv("PROJECT_ID")
@@ -63,6 +64,9 @@ func createDescriptors(client *monitoring.MetricClient, t *target.Target) error 
 			_, err := client.CreateMetricDescriptor(ctx, req)
 			if err != nil {
 				return fmt.Errorf("error creating descriptor %s: %v", req.Name, err)
+			}
+			if verbose {
+				log.Printf("created metric descriptor: %s", req.MetricDescriptor.Type)
 			}
 		}
 	}
@@ -103,8 +107,8 @@ func DeleteDescriptors(client *monitoring.MetricClient) error {
 	return nil
 }
 
-func Metrics(client *monitoring.MetricClient, t *target.Target) error {
-	err := createDescriptors(client, t)
+func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) error {
+	err := createDescriptors(client, t, verbose)
 	if err != nil {
 		return err
 	}
@@ -122,9 +126,10 @@ func Metrics(client *monitoring.MetricClient, t *target.Target) error {
 		Seconds: t.CollectTime.Unix(),
 	}
 	for cpu, value := range t.CPU {
+		typ := fmt.Sprintf("%s/cpu/%s/usage", prefix, cpu)
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 			Metric: &metricpb.Metric{
-				Type: fmt.Sprintf("%s/cpu/%s/usage", prefix, cpu),
+				Type: typ,
 			},
 			Points: []*monitoringpb.Point{{
 				Interval: &monitoringpb.TimeInterval{
@@ -138,12 +143,16 @@ func Metrics(client *monitoring.MetricClient, t *target.Target) error {
 				},
 			}},
 		})
+		if verbose {
+			log.Printf("adding timeseries data for %s at %v", typ, t.CollectTime)
+		}
 	}
 
 	for strg, info := range t.Storage {
+		typ := fmt.Sprintf("%s/storage/%s/used", prefix, strings.ReplaceAll(strg, " ", "_"))
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 			Metric: &metricpb.Metric{
-				Type: fmt.Sprintf("%s/storage/%s/used", prefix, strings.ReplaceAll(strg, " ", "_")),
+				Type: typ,
 			},
 			Points: []*monitoringpb.Point{{
 				Interval: &monitoringpb.TimeInterval{
@@ -157,9 +166,13 @@ func Metrics(client *monitoring.MetricClient, t *target.Target) error {
 				},
 			}},
 		})
+		if verbose {
+			log.Printf("adding timeseries data for %s at %v", typ, t.CollectTime)
+		}
+		typ = fmt.Sprintf("%s/storage/%s/size", prefix, strings.ReplaceAll(strg, " ", "_"))
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 			Metric: &metricpb.Metric{
-				Type: fmt.Sprintf("%s/storage/%s/size", prefix, strings.ReplaceAll(strg, " ", "_")),
+				Type: typ,
 			},
 			Points: []*monitoringpb.Point{{
 				Interval: &monitoringpb.TimeInterval{
@@ -173,11 +186,15 @@ func Metrics(client *monitoring.MetricClient, t *target.Target) error {
 				},
 			}},
 		})
+		if verbose {
+			log.Printf("adding timeseries data for %s at %v", typ, t.CollectTime)
+		}
 	}
 	for iface, info := range t.Ifaces {
+		typ := fmt.Sprintf("%s/interface/%s/txrate", prefix, strings.ReplaceAll(iface, " ", "_"))
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 			Metric: &metricpb.Metric{
-				Type: fmt.Sprintf("%s/interface/%s/txrate", prefix, strings.ReplaceAll(iface, " ", "_")),
+				Type: typ,
 			},
 			Points: []*monitoringpb.Point{{
 				Interval: &monitoringpb.TimeInterval{
@@ -191,9 +208,13 @@ func Metrics(client *monitoring.MetricClient, t *target.Target) error {
 				},
 			}},
 		})
+		if verbose {
+			log.Printf("adding timeseries data for %s at %v", typ, t.CollectTime)
+		}
+		typ = fmt.Sprintf("%s/interface/%s/rxrate", prefix, strings.ReplaceAll(iface, " ", "_"))
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 			Metric: &metricpb.Metric{
-				Type: fmt.Sprintf("%s/interface/%s/rxrate", prefix, strings.ReplaceAll(iface, " ", "_")),
+				Type: typ,
 			},
 			Points: []*monitoringpb.Point{{
 				Interval: &monitoringpb.TimeInterval{
@@ -207,6 +228,9 @@ func Metrics(client *monitoring.MetricClient, t *target.Target) error {
 				},
 			}},
 		})
+		if verbose {
+			log.Printf("adding timeseries data for %s at %v", typ, t.CollectTime)
+		}
 	}
 
 	ctx := context.Background()

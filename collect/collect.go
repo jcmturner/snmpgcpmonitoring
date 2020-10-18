@@ -2,6 +2,7 @@ package collect
 
 import (
 	"fmt"
+	"log"
 	"math/big"
 	"os"
 	"strings"
@@ -27,23 +28,23 @@ const (
 	hrProcessorLoad          = ".1.3.6.1.2.1.25.3.3.1.2"
 )
 
-func Run(t *target.Target, client *monitoring.MetricClient, wg *sync.WaitGroup) {
+func Run(t *target.Target, client *monitoring.MetricClient, wg *sync.WaitGroup, verbose bool) {
 	defer wg.Done()
 	for {
-		err := CPU(t)
+		err := CPU(t, verbose)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "cpu metrics collection error: %v", err)
 		}
-		err = Storage(t)
+		err = Storage(t, verbose)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "storage metrics collection error: %v", err)
 		}
-		err = Inferface(t)
+		err = Inferface(t, verbose)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "interface metrics collection error: %v", err)
 		}
 		t.CollectTime = time.Now().UTC()
-		err = store.Metrics(client, t)
+		err = store.Metrics(client, t, verbose)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error storing metrics: %v", err)
 		}
@@ -51,13 +52,13 @@ func Run(t *target.Target, client *monitoring.MetricClient, wg *sync.WaitGroup) 
 	}
 }
 
-func CPU(t *target.Target) error {
+func CPU(t *target.Target, verbose bool) error {
 	err := t.Client.Connect()
 	if err != nil {
 		return err
 	}
 	defer t.Client.Conn.Close()
-	err = t.Client.BulkWalk(hrProcessorLoad, walkHRProcLoad(t))
+	err = t.Client.BulkWalk(hrProcessorLoad, walkHRProcLoad(t, verbose))
 	if err != nil {
 		if _, ok := err.(EOWalk); !ok {
 			return err
@@ -66,13 +67,13 @@ func CPU(t *target.Target) error {
 	return nil
 }
 
-func Storage(t *target.Target) error {
+func Storage(t *target.Target, verbose bool) error {
 	err := t.Client.Connect()
 	if err != nil {
 		return err
 	}
 	defer t.Client.Conn.Close()
-	err = t.Client.BulkWalk(hrStorageDescr, walkHRStorage(t))
+	err = t.Client.BulkWalk(hrStorageDescr, walkHRStorage(t, verbose))
 	if err != nil {
 		if _, ok := err.(EOWalk); !ok {
 			return err
@@ -96,18 +97,27 @@ func Storage(t *target.Target) error {
 		stInfo := t.Storage[stDescr]
 		switch oidHead {
 		case hrStorageAllocationUnits:
+			if verbose {
+				log.Printf("processing SNMP response for hrStorageAllocationUnits from %s for %s", t.Name, stDescr)
+			}
 			stInfo.Multiplier = gosnmp.ToBigInt(variable.Value)
 		case hrStorageUsed:
+			if verbose {
+				log.Printf("processing SNMP response for hrStorageUsed from %s for %s", t.Name, stDescr)
+			}
 			stInfo.Used = gosnmp.ToBigInt(variable.Value)
 			stInfo.Timestamp = ts
 		case hrStorageSize:
+			if verbose {
+				log.Printf("processing SNMP response for hrStorageSize from %s for %s", t.Name, stDescr)
+			}
 			stInfo.Size = gosnmp.ToBigInt(variable.Value)
 		}
 	}
 	return nil
 }
 
-func Inferface(t *target.Target) error {
+func Inferface(t *target.Target, verbose bool) error {
 	err := t.Client.Connect()
 	if err != nil {
 		return err
@@ -138,8 +148,14 @@ func Inferface(t *target.Target) error {
 		oidHead := strings.TrimSuffix(variable.Name, fmt.Sprintf(".%s", oid[len(oid)-1]))
 		switch oidHead {
 		case ifSpeed:
+			if verbose {
+				log.Printf("processing SNMP response for ifSpeed from %s for %s", t.Name, desc)
+			}
 			ifInfo.Speed = gosnmp.ToBigInt(variable.Value)
 		case ifHCInOctets:
+			if verbose {
+				log.Printf("processing SNMP response for ifHCInOctets from %s for %s", t.Name, desc)
+			}
 			ifInfo.Delta = ts.Sub(ifInfo.Timestamp)
 			ifInfo.Timestamp = ts
 			v := new(big.Int)
@@ -147,6 +163,9 @@ func Inferface(t *target.Target) error {
 			ifInfo.InBitsDelta.Sub(v, ifInfo.InBits)
 			ifInfo.InBits = v
 		case ifHCOutOctets:
+			if verbose {
+				log.Printf("processing SNMP response for ifHCOutOctets from %s for %s", t.Name, desc)
+			}
 			v := new(big.Int)
 			v.Mul(gosnmp.ToBigInt(variable.Value), eight)
 			ifInfo.OutBitsDelta.Sub(v, ifInfo.OutBits)
@@ -177,7 +196,7 @@ func walkIfDesc(t *target.Target) gosnmp.WalkFunc {
 	}
 }
 
-func walkHRProcLoad(t *target.Target) gosnmp.WalkFunc {
+func walkHRProcLoad(t *target.Target, verbose bool) gosnmp.WalkFunc {
 	return func(dataUnit gosnmp.SnmpPDU) error {
 		if !strings.HasPrefix(dataUnit.Name, hrProcessorLoad) {
 			return EOWalk{}
@@ -185,11 +204,14 @@ func walkHRProcLoad(t *target.Target) gosnmp.WalkFunc {
 		oid := strings.Split(dataUnit.Name, ".")
 		v := gosnmp.ToBigInt(dataUnit.Value)
 		t.CPU[oid[len(oid)-1]] = v.Int64()
+		if verbose {
+			log.Printf("processing CPU load response from %s for CPU(%s)", t.Name, oid[len(oid)-1])
+		}
 		return nil
 	}
 }
 
-func walkHRStorage(t *target.Target) gosnmp.WalkFunc {
+func walkHRStorage(t *target.Target, verbose bool) gosnmp.WalkFunc {
 	return func(dataUnit gosnmp.SnmpPDU) error {
 		if !strings.HasPrefix(dataUnit.Name, hrStorageDescr) {
 			return EOWalk{}
@@ -200,6 +222,9 @@ func walkHRStorage(t *target.Target) gosnmp.WalkFunc {
 			oidTail := oid[len(oid)-1]
 			t.Storage[desc] = info.NewStorage(desc, oidTail)
 			t.StrgIndex[oidTail] = desc
+			if verbose {
+				log.Printf("storage %s on %s added for tracking", desc, t.Name)
+			}
 		}
 		return nil
 	}
