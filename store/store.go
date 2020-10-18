@@ -80,10 +80,6 @@ func Initialise() (*monitoring.MetricClient, error) {
 	if credsfile == "" {
 		return nil, errors.New("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
 	}
-	trustCert := os.Getenv("CA_CERTS")
-	if trustCert == "" {
-		return nil, errors.New("CA_CERTS environment variable not set")
-	}
 	cp := x509.NewCertPool()
 	ok := cp.AppendCertsFromPEM([]byte(ca_certs))
 	if !ok {
