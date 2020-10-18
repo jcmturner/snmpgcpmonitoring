@@ -24,9 +24,9 @@ const (
 
 func Initialise() (*monitoring.MetricClient, error) {
 	ctx := context.Background() //TODO context properly
-	credsfile := os.Getenv("GCP_CREDENTIALS")
+	credsfile := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 	if credsfile == "" {
-		return nil, errors.New("GCP_CREDENTIALS environment variable not set")
+		return nil, errors.New("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
 	}
 	return monitoring.NewMetricClient(ctx, option.WithCredentialsFile(credsfile)) // TODO consider the options that can be passed here
 }
