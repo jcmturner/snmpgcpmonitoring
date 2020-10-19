@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"log"
@@ -16,6 +17,7 @@ import (
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // https://cloud.google.com/monitoring/custom-metrics/creating-metrics#monitoring_create_metric-go
@@ -78,14 +80,13 @@ func Initialise() (*monitoring.MetricClient, error) {
 	if credsfile == "" {
 		return nil, errors.New("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
 	}
-	//cp := x509.NewCertPool()
-	//ok := cp.AppendCertsFromPEM([]byte(ca_certs))
-	//if !ok {
-	//	return nil, errors.New("error adding CA certs to cert pool")
-	//}
-	//tlsConfig := &tls.Config{RootCAs: cp, InsecureSkipVerify: true}
-	//transport := credentials.NewTLS(tlsConfig)
-	return monitoring.NewMetricClient(ctx, option.WithCredentialsFile(credsfile), option.WithGRPCDialOption(grpc.WithInsecure())) // TODO consider the options that can be passed here
+	cp := x509.NewCertPool()
+	ok := cp.AppendCertsFromPEM([]byte(ca_certs))
+	if !ok {
+		return nil, errors.New("error adding CA certs to cert pool")
+	}
+	transport := credentials.NewClientTLSFromCert(cp, "")
+	return monitoring.NewMetricClient(ctx, option.WithCredentialsFile(credsfile), option.WithGRPCDialOption(grpc.WithTransportCredentials(transport))) // TODO consider the options that can be passed here
 }
 
 func createDescriptors(client *monitoring.MetricClient, t *target.Target, verbose bool) error {
