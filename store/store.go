@@ -114,17 +114,17 @@ func createDescriptors(client *monitoring.MetricClient, t *target.Target, verbos
 		if err != nil {
 			return fmt.Errorf("could not list existing descriptors: %v", err)
 		}
-		descriptors[resp.Name] = nil
+		descriptors[resp.Type] = nil
 	}
 
-	for _, req := range getMetricDescriptorNames(t, projectID) {
-		if _, ok := descriptors[req.MetricDescriptor.Type]; !ok {
-			_, err := client.CreateMetricDescriptor(ctx, req)
+	for _, desc := range getMetricDescriptorNames(t, projectID) {
+		if _, ok := descriptors[desc.MetricDescriptor.Type]; !ok {
+			_, err := client.CreateMetricDescriptor(ctx, desc)
 			if err != nil {
 				return fmt.Errorf("error creating descriptor %s: %v", req.Name, err)
 			}
 			if verbose {
-				log.Printf("created metric descriptor: %s\n", req.MetricDescriptor.Type)
+				log.Printf("created metric descriptor: %s\n", desc.MetricDescriptor.Type)
 			}
 		}
 	}
