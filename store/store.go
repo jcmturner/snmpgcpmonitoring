@@ -24,7 +24,7 @@ import (
 
 const (
 	metricTypePrefix = "custom.googleapis.com"
-	ca_certs         = `-----BEGIN CERTIFICATE-----
+	ca_certs_root    = `-----BEGIN CERTIFICATE-----
 MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G
 A1UECxMXR2xvYmFsU2lnbiBSb290IENBIC0gUjIxEzARBgNVBAoTCkdsb2JhbFNp
 Z24xEzARBgNVBAMTCkdsb2JhbFNpZ24wHhcNMDYxMjE1MDgwMDAwWhcNMjExMjE1
@@ -46,7 +46,8 @@ ot+3i9DAgBkcRcAtjOj4LaR0VknFBbVPFd5uRHg5h6h+u/N5GJG79G+dwfCMNYxd
 AfvDbbnvRG15RjF+Cv6pgsH/76tuIMRQyV+dTZsXjAzlAcmgQWpzU/qlULRuJQ/7
 TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==
 -----END CERTIFICATE-----
------BEGIN CERTIFICATE-----
+`
+	ca_certs_inter = `-----BEGIN CERTIFICATE-----
 MIIESjCCAzKgAwIBAgINAeO0mqGNiqmBJWlQuDANBgkqhkiG9w0BAQsFADBMMSAw
 HgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMjETMBEGA1UEChMKR2xvYmFs
 U2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjAeFw0xNzA2MTUwMDAwNDJaFw0yMTEy
@@ -81,7 +82,11 @@ func Initialise() (*monitoring.MetricClient, error) {
 		return nil, errors.New("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
 	}
 	cp := x509.NewCertPool()
-	ok := cp.AppendCertsFromPEM([]byte(ca_certs))
+	ok := cp.AppendCertsFromPEM([]byte(ca_certs_root))
+	if !ok {
+		return nil, errors.New("error adding CA certs to cert pool")
+	}
+	ok = cp.AppendCertsFromPEM([]byte(ca_certs_inter))
 	if !ok {
 		return nil, errors.New("error adding CA certs to cert pool")
 	}
