@@ -86,7 +86,7 @@ func Initialise() (*monitoring.MetricClient, error) {
 	if !ok {
 		return nil, errors.New("error adding CA certs to cert pool")
 	}
-	tlsConfig := &tls.Config{RootCAs: cp}
+	tlsConfig := &tls.Config{RootCAs: cp, InsecureSkipVerify: true}
 	transport := credentials.NewTLS(tlsConfig)
 	return monitoring.NewMetricClient(ctx, option.WithCredentialsFile(credsfile), option.WithGRPCDialOption(grpc.WithTransportCredentials(transport))) // TODO consider the options that can be passed here
 }
