@@ -24,7 +24,7 @@ import (
 
 const (
 	metricTypePrefix = "custom.googleapis.com"
-	ca_certs_root    = `-----BEGIN CERTIFICATE-----
+	ca_certs         = `-----BEGIN CERTIFICATE-----
 MIIDujCCAqKgAwIBAgILBAAAAAABD4Ym5g0wDQYJKoZIhvcNAQEFBQAwTDEgMB4G
 A1UECxMXR2xvYmFsU2lnbiBSb290IENBIC0gUjIxEzARBgNVBAoTCkdsb2JhbFNp
 Z24xEzARBgNVBAMTCkdsb2JhbFNpZ24wHhcNMDYxMjE1MDgwMDAwWhcNMjExMjE1
@@ -46,8 +46,7 @@ ot+3i9DAgBkcRcAtjOj4LaR0VknFBbVPFd5uRHg5h6h+u/N5GJG79G+dwfCMNYxd
 AfvDbbnvRG15RjF+Cv6pgsH/76tuIMRQyV+dTZsXjAzlAcmgQWpzU/qlULRuJQ/7
 TBj0/VLZjmmx6BEP3ojY+x1J96relc8geMJgEtslQIxq/H5COEBkEveegeGTLg==
 -----END CERTIFICATE-----
-`
-	ca_certs_inter = `-----BEGIN CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
 MIIESjCCAzKgAwIBAgINAeO0mqGNiqmBJWlQuDANBgkqhkiG9w0BAQsFADBMMSAw
 HgYDVQQLExdHbG9iYWxTaWduIFJvb3QgQ0EgLSBSMjETMBEGA1UEChMKR2xvYmFs
 U2lnbjETMBEGA1UEAxMKR2xvYmFsU2lnbjAeFw0xNzA2MTUwMDAwNDJaFw0yMTEy
@@ -76,22 +75,19 @@ USpxu6x6td0V7SvJCCosirSmIatj/9dSSVDQibet8q/7UK4v4ZUN80atnZz1yg==
 )
 
 func Initialise() (*monitoring.MetricClient, error) {
-	ctx := context.Background() //TODO context properly
+	ctx := context.Background()
 	credsfile := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 	if credsfile == "" {
 		return nil, errors.New("GOOGLE_APPLICATION_CREDENTIALS environment variable not set")
 	}
 	cp := x509.NewCertPool()
-	ok := cp.AppendCertsFromPEM([]byte(ca_certs_root))
-	if !ok {
-		return nil, errors.New("error adding CA certs to cert pool")
-	}
-	ok = cp.AppendCertsFromPEM([]byte(ca_certs_inter))
-	if !ok {
+	if !cp.AppendCertsFromPEM([]byte(ca_certs)) {
 		return nil, errors.New("error adding CA certs to cert pool")
 	}
 	transport := credentials.NewClientTLSFromCert(cp, "")
-	return monitoring.NewMetricClient(ctx, option.WithCredentialsFile(credsfile), option.WithGRPCDialOption(grpc.WithTransportCredentials(transport))) // TODO consider the options that can be passed here
+	return monitoring.NewMetricClient(ctx,
+		option.WithCredentialsFile(credsfile),
+		option.WithGRPCDialOption(grpc.WithTransportCredentials(transport)))
 }
 
 func createDescriptors(client *monitoring.MetricClient, t *target.Target, verbose bool) error {

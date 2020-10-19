@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"sync"
@@ -12,6 +13,9 @@ import (
 )
 
 func main() {
+	erase := flag.Bool("erase", false, "erase all historical data and metric descriptors")
+	flag.Parse()
+
 	var verbose bool
 	verb := os.Getenv("VERBOSE")
 	if verb == "1" {
@@ -25,10 +29,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("error initialising metrics client: %v", err)
 	}
-	//err = store.DeleteDescriptors(client)
-	//if err != nil {
-	//	log.Fatalf("error deleting metric descriptors: %v", err)
-	//}
+	if *erase {
+		log.Println("erasing all historic data and metric descriptors...")
+		err = store.DeleteDescriptors(client)
+		if err != nil {
+			log.Fatalf("error deleting metric descriptors: %v", err)
+		}
+		log.Println("finished erasing data")
+		os.Exit(0)
+	}
 	ts, err := target.Load(p)
 	if err != nil {
 		log.Fatalf("error loading targets configuration: %v", err)
