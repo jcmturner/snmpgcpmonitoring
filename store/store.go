@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"strings"
 
@@ -18,6 +17,8 @@ import (
 	"google.golang.org/api/option"
 	metricpb "google.golang.org/genproto/googleapis/api/metric"
 	monitoringpb "google.golang.org/genproto/googleapis/monitoring/v3"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // https://cloud.google.com/monitoring/custom-metrics/creating-metrics#monitoring_create_metric-go
@@ -85,11 +86,9 @@ func Initialise() (*monitoring.MetricClient, error) {
 	if !ok {
 		return nil, errors.New("error adding CA certs to cert pool")
 	}
-	cl := http.DefaultClient
 	tlsConfig := &tls.Config{RootCAs: cp}
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
-	cl.Transport = transport
-	return monitoring.NewMetricClient(ctx, option.WithCredentialsFile(credsfile), option.WithHTTPClient(cl)) // TODO consider the options that can be passed here
+	transport := credentials.NewTLS(tlsConfig)
+	return monitoring.NewMetricClient(ctx, option.WithCredentialsFile(credsfile), option.WithGRPCDialOption(grpc.WithTransportCredentials(transport))) // TODO consider the options that can be passed here
 }
 
 func createDescriptors(client *monitoring.MetricClient, t *target.Target, verbose bool) error {
