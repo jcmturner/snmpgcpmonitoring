@@ -207,7 +207,8 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 	}
 
 	for strg, info := range t.Storage {
-		typ := fmt.Sprintf("%s/storage/%s/used", prefix, strings.ReplaceAll(strg, " ", "_"))
+		descrip := strings.ReplaceAll(strings.ReplaceAll(strg, " ", "_"), "/", "")
+		typ := fmt.Sprintf("%s/storage/%s/used", prefix, descrip)
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 			Metric: &metricpb.Metric{
 				Type: typ,
@@ -227,7 +228,7 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 		if verbose {
 			log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
 		}
-		typ = fmt.Sprintf("%s/storage/%s/size", prefix, strings.ReplaceAll(strg, " ", "_"))
+		typ = fmt.Sprintf("%s/storage/%s/size", prefix, descrip)
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 			Metric: &metricpb.Metric{
 				Type: typ,
@@ -249,7 +250,8 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 		}
 	}
 	for iface, info := range t.Ifaces {
-		typ := fmt.Sprintf("%s/interface/%s/txrate", prefix, strings.ReplaceAll(iface, " ", "_"))
+		descrip := strings.ReplaceAll(strings.ReplaceAll(iface, " ", "_"), "/", "")
+		typ := fmt.Sprintf("%s/interface/%s/txrate", prefix, descrip)
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 			Metric: &metricpb.Metric{
 				Type: typ,
@@ -269,7 +271,7 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 		if verbose {
 			log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
 		}
-		typ = fmt.Sprintf("%s/interface/%s/rxrate", prefix, strings.ReplaceAll(iface, " ", "_"))
+		typ = fmt.Sprintf("%s/interface/%s/rxrate", prefix, descrip)
 		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 			Metric: &metricpb.Metric{
 				Type: typ,
@@ -327,11 +329,12 @@ func getMetricDescriptorNames(t *target.Target, projectID string) (reqs []*monit
 	}
 
 	for _, info := range t.Storage {
+		descrip := strings.ReplaceAll(strings.ReplaceAll(info.Description, " ", "_"), "/", "")
 		reqs = append(reqs, &monitoringpb.CreateMetricDescriptorRequest{
 			Name: "projects/" + projectID,
 			MetricDescriptor: &metricpb.MetricDescriptor{
-				Name:        fmt.Sprintf("%s-storage-%s-size", t.Name, strings.ReplaceAll(info.Description, " ", "_")),
-				Type:        fmt.Sprintf("%s/storage/%s/size", prefix, strings.ReplaceAll(info.Description, " ", "_")),
+				Name:        fmt.Sprintf("%s-storage-%s-size", t.Name, descrip),
+				Type:        fmt.Sprintf("%s/storage/%s/size", prefix, descrip),
 				MetricKind:  metricpb.MetricDescriptor_GAUGE,
 				ValueType:   metricpb.MetricDescriptor_INT64,
 				Unit:        "By",
@@ -342,8 +345,8 @@ func getMetricDescriptorNames(t *target.Target, projectID string) (reqs []*monit
 		reqs = append(reqs, &monitoringpb.CreateMetricDescriptorRequest{
 			Name: "projects/" + projectID,
 			MetricDescriptor: &metricpb.MetricDescriptor{
-				Name:        fmt.Sprintf("%s-storage-%s-used", t.Name, strings.ReplaceAll(info.Description, " ", "_")),
-				Type:        fmt.Sprintf("%s/storage/%s/used", prefix, strings.ReplaceAll(info.Description, " ", "_")),
+				Name:        fmt.Sprintf("%s-storage-%s-used", t.Name, descrip),
+				Type:        fmt.Sprintf("%s/storage/%s/used", prefix, descrip),
 				MetricKind:  metricpb.MetricDescriptor_GAUGE,
 				ValueType:   metricpb.MetricDescriptor_INT64,
 				Unit:        "By",
@@ -353,11 +356,12 @@ func getMetricDescriptorNames(t *target.Target, projectID string) (reqs []*monit
 		})
 	}
 	for iface := range t.Ifaces {
+		descrip := strings.ReplaceAll(iface, " ", "_")
 		reqs = append(reqs, &monitoringpb.CreateMetricDescriptorRequest{
 			Name: "projects/" + projectID,
 			MetricDescriptor: &metricpb.MetricDescriptor{
-				Name:        fmt.Sprintf("%s-interface-%s-txrate", t.Name, strings.ReplaceAll(iface, " ", "_")),
-				Type:        fmt.Sprintf("%s/interface/%s/txrate", prefix, strings.ReplaceAll(iface, " ", "_")),
+				Name:        fmt.Sprintf("%s-interface-%s-txrate", t.Name, descrip),
+				Type:        fmt.Sprintf("%s/interface/%s/txrate", prefix, descrip),
 				MetricKind:  metricpb.MetricDescriptor_GAUGE,
 				ValueType:   metricpb.MetricDescriptor_DOUBLE,
 				Unit:        "By{transmitted}/s",
@@ -368,8 +372,8 @@ func getMetricDescriptorNames(t *target.Target, projectID string) (reqs []*monit
 		reqs = append(reqs, &monitoringpb.CreateMetricDescriptorRequest{
 			Name: "projects/" + projectID,
 			MetricDescriptor: &metricpb.MetricDescriptor{
-				Name:        fmt.Sprintf("%s-interface-%s-rxrate", t.Name, strings.ReplaceAll(iface, " ", "_")),
-				Type:        fmt.Sprintf("%s/interface/%s/rxrate", prefix, strings.ReplaceAll(iface, " ", "_")),
+				Name:        fmt.Sprintf("%s-interface-%s-rxrate", t.Name, descrip),
+				Type:        fmt.Sprintf("%s/interface/%s/rxrate", prefix, descrip),
 				MetricKind:  metricpb.MetricDescriptor_GAUGE,
 				ValueType:   metricpb.MetricDescriptor_DOUBLE,
 				Unit:        "By{received}/s",

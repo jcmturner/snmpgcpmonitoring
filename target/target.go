@@ -61,6 +61,7 @@ func (t *Target) UnmarshalJSON(data []byte) error {
 	t.IP = u.IP
 	t.Community = u.Community
 	t.Interfaces = u.Interfaces
+	t.StorageFilter = u.StorageFilter
 	t.init()
 	t.Frequency = u.Frequency
 	t.Duration, err = time.ParseDuration(t.Frequency)
@@ -77,6 +78,9 @@ func (t *Target) init() {
 		t.Ifaces[iface] = nil
 	}
 	for _, strg := range t.StorageFilter {
+		if strg == "/" {
+			strg = "root"
+		}
 		t.Storage[strg] = nil
 	}
 	t.Client = &gosnmp.GoSNMP{

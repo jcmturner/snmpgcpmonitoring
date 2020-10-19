@@ -217,7 +217,10 @@ func walkHRStorage(t *target.Target, verbose bool) gosnmp.WalkFunc {
 			return EOWalk{}
 		}
 		desc := dataUnit.Value.(string)
-		if _, ok := t.Storage[desc]; ok || len(t.Storage) == 0 {
+		if desc == "/" {
+			desc = "root"
+		}
+		if _, ok := t.Storage[desc]; ok || len(t.StorageFilter) == 0 {
 			oid := strings.Split(dataUnit.Name, ".")
 			oidTail := oid[len(oid)-1]
 			t.Storage[desc] = info.NewStorage(desc, oidTail)
