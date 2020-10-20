@@ -90,3 +90,23 @@ func (s *Storage) SizeBytes() int64 {
 func (s *Storage) UsedBytes() int64 {
 	return s.Used.Int64() * s.Multiplier.Int64()
 }
+
+type Wireless struct {
+	ClientCount       *big.Int
+	CCQ               *big.Int
+	ClientConnections map[string]*WirelessClient
+}
+
+type WirelessClient struct {
+	MAC            string
+	SNR            *big.Int
+	SignalStrength *big.Int
+}
+
+func NewWireless() *Wireless {
+	return &Wireless{
+		ClientCount:       big.NewInt(0),
+		CCQ:               big.NewInt(0),
+		ClientConnections: make(map[string]*WirelessClient),
+	}
+}

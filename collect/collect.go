@@ -1,10 +1,14 @@
 package collect
 
 import (
+	"encoding/binary"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"math/big"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,15 +21,20 @@ import (
 )
 
 const (
-	ifHCInOctets             = ".1.3.6.1.2.1.31.1.1.1.6"
-	ifHCOutOctets            = ".1.3.6.1.2.1.31.1.1.1.10"
-	ifSpeed                  = ".1.3.6.1.2.1.2.2.1.5"
-	ifDescr                  = ".1.3.6.1.2.1.2.2.1.2"
-	hrStorageDescr           = ".1.3.6.1.2.1.25.2.3.1.3"
-	hrStorageSize            = ".1.3.6.1.2.1.25.2.3.1.5"
-	hrStorageUsed            = ".1.3.6.1.2.1.25.2.3.1.6"
-	hrStorageAllocationUnits = ".1.3.6.1.2.1.25.2.3.1.4"
-	hrProcessorLoad          = ".1.3.6.1.2.1.25.3.3.1.2"
+	ifHCInOctets                         = ".1.3.6.1.2.1.31.1.1.1.6"
+	ifHCOutOctets                        = ".1.3.6.1.2.1.31.1.1.1.10"
+	ifSpeed                              = ".1.3.6.1.2.1.2.2.1.5"
+	ifDescr                              = ".1.3.6.1.2.1.2.2.1.2"
+	hrStorageDescr                       = ".1.3.6.1.2.1.25.2.3.1.3"
+	hrStorageSize                        = ".1.3.6.1.2.1.25.2.3.1.5"
+	hrStorageUsed                        = ".1.3.6.1.2.1.25.2.3.1.6"
+	hrStorageAllocationUnits             = ".1.3.6.1.2.1.25.2.3.1.4"
+	hrProcessorLoad                      = ".1.3.6.1.2.1.25.3.3.1.2"
+	mikrotikWirelessClientCount          = ".1.3.6.1.4.1.14988.1.1.1.3.1.6"
+	mikrotikWirelessOverallCCQ           = ".1.3.6.1.4.1.14988.1.1.1.3.1.10"
+	mikrotikWirelessClientSignalStrength = ".1.3.6.1.4.1.14988.1.1.1.2.1.3"
+	mikrotikWirelessClientSNR            = ".1.3.6.1.4.1.14988.1.1.1.2.1.12"
+	mikrotikWirelessOIDSuffix            = ".26" // All the OIDs from mikrotik seem to end in this.
 )
 
 func Run(t *target.Target, client *monitoring.MetricClient, wg *sync.WaitGroup, verbose bool) {
@@ -33,20 +42,26 @@ func Run(t *target.Target, client *monitoring.MetricClient, wg *sync.WaitGroup, 
 	for {
 		err := CPU(t, verbose)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "cpu metrics collection error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "cpu metrics collection from %s error: %v\n", t.Name, err)
 		}
 		err = Storage(t, verbose)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "storage metrics collection error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "storage metrics collection from %s error: %v\n", t.Name, err)
 		}
 		err = Inferface(t, verbose)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "interface metrics collection error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "interface metrics collection from %s error: %v\n", t.Name, err)
+		}
+		if t.Wireless != nil {
+			err = Mikrotik(t, verbose)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "wireless metrics collection from %s error: %v\n", t.Name, err)
+			}
 		}
 		t.CollectTime = time.Now().UTC()
 		err = store.Metrics(client, t, verbose)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error storing metrics: %v\n", err)
+			fmt.Fprintf(os.Stderr, "error storing metrics for %s: %v\n", t.Name, err)
 		}
 		time.Sleep(t.Duration)
 	}
@@ -231,4 +246,94 @@ func walkHRStorage(t *target.Target, verbose bool) gosnmp.WalkFunc {
 		}
 		return nil
 	}
+}
+
+func Mikrotik(t *target.Target, verbose bool) error {
+	err := t.Client.Connect()
+	if err != nil {
+		return err
+	}
+	defer t.Client.Conn.Close()
+
+	if t.Wireless == nil {
+		return errors.New("mikrotik extension not configured for target")
+	}
+	oid := []string{
+		mikrotikWirelessClientCount + mikrotikWirelessOIDSuffix,
+		mikrotikWirelessOverallCCQ + mikrotikWirelessOIDSuffix,
+	}
+	for _, mac := range t.Extensions.Mikrotik.WirelessClientMACs {
+		macoid, err := macToOidTail(mac)
+		if err != nil {
+			return err
+		}
+		t.Wireless.ClientConnections[macoid] = &info.WirelessClient{
+			MAC: strings.ToUpper(mac),
+		}
+		oid = append(oid, fmt.Sprintf("%s.%s%s", mikrotikWirelessClientSignalStrength, macoid, mikrotikWirelessOIDSuffix))
+		oid = append(oid, fmt.Sprintf("%s.%s%s", mikrotikWirelessClientSNR, macoid, mikrotikWirelessOIDSuffix))
+	}
+	res, err := t.Client.Get(oid)
+	if err != nil {
+		return err
+	}
+	for _, variable := range res.Variables {
+		if strings.HasPrefix(variable.Name, mikrotikWirelessClientCount) {
+			if verbose {
+				log.Printf("processing SNMP response for mikrotikWirelessClientCount from %s\n", t.Name)
+			}
+			t.Wireless.ClientCount = gosnmp.ToBigInt(variable.Value)
+		}
+		if strings.HasPrefix(variable.Name, mikrotikWirelessOverallCCQ) {
+			if verbose {
+				log.Printf("processing SNMP response for mikrotikWirelessOverallCCQ from %s\n", t.Name)
+			}
+			t.Wireless.CCQ = gosnmp.ToBigInt(variable.Value)
+		}
+		if strings.HasPrefix(variable.Name, mikrotikWirelessClientSignalStrength) {
+			macoid := macOid(variable.Name, mikrotikWirelessClientSignalStrength)
+			if wcl, ok := t.Wireless.ClientConnections[macoid]; ok {
+				if verbose {
+					log.Printf("processing SNMP response for mikrotikWirelessClientSignalStrength from %s for %s\n", t.Name, wcl.MAC)
+				}
+				wcl.SignalStrength = gosnmp.ToBigInt(variable.Value)
+			}
+		}
+		if strings.HasPrefix(variable.Name, mikrotikWirelessClientSNR) {
+			macoid := macOid(variable.Name, mikrotikWirelessClientSNR)
+			if wcl, ok := t.Wireless.ClientConnections[macoid]; ok {
+				if verbose {
+					log.Printf("processing SNMP response for mikrotikWirelessClientSNR from %s for %s\n", t.Name, wcl.MAC)
+				}
+				wcl.SNR = gosnmp.ToBigInt(variable.Value)
+			}
+		}
+	}
+	return nil
+}
+
+// macToOidTail will convert from a MAC address string of colon separated hex values to dot separated decimals string
+func macToOidTail(mac string) (string, error) {
+	var oid []string
+	for _, h := range strings.Split(mac, ":") {
+		if len(h) > 2 {
+			return "", fmt.Errorf("invalid mac address at %s", h)
+		}
+		b, err := hex.DecodeString(h)
+		if err != nil {
+			return "", fmt.Errorf("invalid mac address at %s: %v", h, err)
+		}
+		d, n := binary.Uvarint(b)
+		if n != 1 {
+			return "", fmt.Errorf("could not convert hex value %s to decimal", h)
+		}
+		oid = append(oid, strconv.Itoa(int(d)))
+	}
+	return strings.Join(oid, "."), nil
+}
+
+func macOid(fullOid string, prefix string) string {
+	oidTail := strings.TrimPrefix(fullOid, prefix+".")
+	oidSplit := strings.SplitN(oidTail, ".", 7)
+	return strings.Join(oidSplit[:6], ".")
 }

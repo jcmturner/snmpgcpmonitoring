@@ -293,6 +293,93 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 		}
 	}
 
+	if t.Wireless != nil {
+		typ := fmt.Sprintf("%s/wireless/clientcount", prefix)
+		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
+			Metric: &metricpb.Metric{
+				Type: typ,
+			},
+			Points: []*monitoringpb.Point{{
+				Interval: &monitoringpb.TimeInterval{
+					StartTime: now,
+					EndTime:   now,
+				},
+				Value: &monitoringpb.TypedValue{
+					Value: &monitoringpb.TypedValue_Int64Value{
+						Int64Value: t.Wireless.ClientCount.Int64(),
+					},
+				},
+			}},
+		})
+		if verbose {
+			log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
+		}
+		typ = fmt.Sprintf("%s/wireless/ccq", prefix)
+		req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
+			Metric: &metricpb.Metric{
+				Type: typ,
+			},
+			Points: []*monitoringpb.Point{{
+				Interval: &monitoringpb.TimeInterval{
+					StartTime: now,
+					EndTime:   now,
+				},
+				Value: &monitoringpb.TypedValue{
+					Value: &monitoringpb.TypedValue_Int64Value{
+						Int64Value: t.Wireless.CCQ.Int64(),
+					},
+				},
+			}},
+		})
+		if verbose {
+			log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
+		}
+
+		for _, wcl := range t.Wireless.ClientConnections {
+			mac := strings.ReplaceAll(wcl.MAC, ":", "")
+			typ := fmt.Sprintf("%s/wireless/clients/%s/signalstrength", prefix, mac)
+			req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
+				Metric: &metricpb.Metric{
+					Type: typ,
+				},
+				Points: []*monitoringpb.Point{{
+					Interval: &monitoringpb.TimeInterval{
+						StartTime: now,
+						EndTime:   now,
+					},
+					Value: &monitoringpb.TypedValue{
+						Value: &monitoringpb.TypedValue_Int64Value{
+							Int64Value: wcl.SignalStrength.Int64(),
+						},
+					},
+				}},
+			})
+			if verbose {
+				log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
+			}
+			typ = fmt.Sprintf("%s/wireless/clients/%s/snr", prefix, mac)
+			req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
+				Metric: &metricpb.Metric{
+					Type: typ,
+				},
+				Points: []*monitoringpb.Point{{
+					Interval: &monitoringpb.TimeInterval{
+						StartTime: now,
+						EndTime:   now,
+					},
+					Value: &monitoringpb.TypedValue{
+						Value: &monitoringpb.TypedValue_Int64Value{
+							Int64Value: wcl.SNR.Int64(),
+						},
+					},
+				}},
+			})
+			if verbose {
+				log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
+			}
+		}
+	}
+
 	ctx := context.Background()
 	err = client.CreateTimeSeries(ctx, req)
 	if err != nil {
@@ -381,6 +468,59 @@ func getMetricDescriptorNames(t *target.Target, projectID string) (reqs []*monit
 				DisplayName: fmt.Sprintf("%s %s Rx rate", t.Name, iface),
 			},
 		})
+	}
+	if t.Wireless != nil {
+		reqs = append(reqs, &monitoringpb.CreateMetricDescriptorRequest{
+			Name: "projects/" + projectID,
+			MetricDescriptor: &metricpb.MetricDescriptor{
+				Name:        fmt.Sprintf("%s-wireless-clientcount", t.Name),
+				Type:        fmt.Sprintf("%s/wireless/clientcount", prefix),
+				MetricKind:  metricpb.MetricDescriptor_GAUGE,
+				ValueType:   metricpb.MetricDescriptor_INT64,
+				Unit:        "By{received}/s",
+				Description: fmt.Sprintf("%s wireless client count", t.Name),
+				DisplayName: fmt.Sprintf("%s wireless client count", t.Name),
+			},
+		})
+		reqs = append(reqs, &monitoringpb.CreateMetricDescriptorRequest{
+			Name: "projects/" + projectID,
+			MetricDescriptor: &metricpb.MetricDescriptor{
+				Name:        fmt.Sprintf("%s-wireless-ccq", t.Name),
+				Type:        fmt.Sprintf("%s/wireless/ccq", prefix),
+				MetricKind:  metricpb.MetricDescriptor_GAUGE,
+				ValueType:   metricpb.MetricDescriptor_INT64,
+				Unit:        "By{received}/s",
+				Description: fmt.Sprintf("%s wireless overall CCQ", t.Name),
+				DisplayName: fmt.Sprintf("%s wireless overall CCQ", t.Name),
+			},
+		})
+		for _, wcl := range t.Wireless.ClientConnections {
+			mac := strings.ReplaceAll(wcl.MAC, ":", "")
+			reqs = append(reqs, &monitoringpb.CreateMetricDescriptorRequest{
+				Name: "projects/" + projectID,
+				MetricDescriptor: &metricpb.MetricDescriptor{
+					Name:        fmt.Sprintf("%s-wireless-client-%s-signalstrength", t.Name, mac),
+					Type:        fmt.Sprintf("%s/wireless/clients/%s/signalstrength", prefix, mac),
+					MetricKind:  metricpb.MetricDescriptor_GAUGE,
+					ValueType:   metricpb.MetricDescriptor_INT64,
+					Unit:        "By{received}/s",
+					Description: fmt.Sprintf("%s wireless client %s signal strength", t.Name, mac),
+					DisplayName: fmt.Sprintf("%s wireless client %s signal strength", t.Name, mac),
+				},
+			})
+			reqs = append(reqs, &monitoringpb.CreateMetricDescriptorRequest{
+				Name: "projects/" + projectID,
+				MetricDescriptor: &metricpb.MetricDescriptor{
+					Name:        fmt.Sprintf("%s-wireless-client-%s-snr", t.Name, mac),
+					Type:        fmt.Sprintf("%s/wireless/clients/%s/snr", prefix, mac),
+					MetricKind:  metricpb.MetricDescriptor_GAUGE,
+					ValueType:   metricpb.MetricDescriptor_INT64,
+					Unit:        "By{received}/s",
+					Description: fmt.Sprintf("%s wireless client %s signal to noise ratio", t.Name, mac),
+					DisplayName: fmt.Sprintf("%s wireless client %s SNR", t.Name, mac),
+				},
+			})
+		}
 	}
 	return reqs
 }

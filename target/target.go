@@ -38,6 +38,7 @@ type Target struct {
 	CPU         map[string]int64         `json:"-"` // percentage usage of each cpu
 	Storage     map[string]*info.Storage `json:"-"`
 	StrgIndex   map[string]string        `json:"-"` // OIDTail : Descr
+	Wireless    *info.Wireless           `json:"-"`
 	Duration    time.Duration            `json:"-"`
 	CollectTime time.Time                `json:"-"`
 }
@@ -49,6 +50,15 @@ type unmarshalTarget struct {
 	Interfaces    []string // The ifDesr of the interfaces of interest
 	StorageFilter []string
 	Frequency     string
+	Extensions    *Extensions `json:"Extensions,omitempty"`
+}
+
+type Extensions struct {
+	Mikrotik *Mikrotik `json:"Mikrotik,omitempty"`
+}
+
+type Mikrotik struct {
+	WirelessClientMACs []string `json:"WirelessClientMACs"`
 }
 
 func (t *Target) UnmarshalJSON(data []byte) error {
@@ -62,6 +72,10 @@ func (t *Target) UnmarshalJSON(data []byte) error {
 	t.Community = u.Community
 	t.Interfaces = u.Interfaces
 	t.StorageFilter = u.StorageFilter
+	t.Extensions = u.Extensions
+	if t.Extensions != nil && t.Extensions.Mikrotik != nil {
+		t.Wireless = info.NewWireless()
+	}
 	t.init()
 	t.Frequency = u.Frequency
 	t.Duration, err = time.ParseDuration(t.Frequency)
