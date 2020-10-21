@@ -337,7 +337,7 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 
 		for _, wcl := range t.Wireless.ClientConnections {
 			mac := strings.ReplaceAll(wcl.MAC, ":", "")
-			typ := fmt.Sprintf("%s/wireless/clients/%s-%s/signalstrength", prefix, wcl.Name, mac)
+			typ := fmt.Sprintf("%s/wireless/clients/%s/%s/signalstrength", prefix, wcl.Name, mac)
 			req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 				Metric: &metricpb.Metric{
 					Type: typ,
@@ -357,7 +357,7 @@ func Metrics(client *monitoring.MetricClient, t *target.Target, verbose bool) er
 			if verbose {
 				log.Printf("adding timeseries data for %s at %v\n", typ, t.CollectTime)
 			}
-			typ = fmt.Sprintf("%s/wireless/clients/%s-%s/snr", prefix, wcl.Name, mac)
+			typ = fmt.Sprintf("%s/wireless/clients/%s/%s/snr", prefix, wcl.Name, mac)
 			req.TimeSeries = append(req.TimeSeries, &monitoringpb.TimeSeries{
 				Metric: &metricpb.Metric{
 					Type: typ,
@@ -500,7 +500,7 @@ func getMetricDescriptorNames(t *target.Target, projectID string) (reqs []*monit
 				Name: "projects/" + projectID,
 				MetricDescriptor: &metricpb.MetricDescriptor{
 					Name:        fmt.Sprintf("%s-wireless-client-%s(%s)-signalstrength", t.Name, wcl.Name, mac),
-					Type:        fmt.Sprintf("%s/wireless/clients/%s-%s/signalstrength", prefix, wcl.Name, mac),
+					Type:        fmt.Sprintf("%s/wireless/clients/%s/%s/signalstrength", prefix, wcl.Name, mac),
 					MetricKind:  metricpb.MetricDescriptor_GAUGE,
 					ValueType:   metricpb.MetricDescriptor_INT64,
 					Unit:        "By{received}/s",
@@ -512,7 +512,7 @@ func getMetricDescriptorNames(t *target.Target, projectID string) (reqs []*monit
 				Name: "projects/" + projectID,
 				MetricDescriptor: &metricpb.MetricDescriptor{
 					Name:        fmt.Sprintf("%s-wireless-client-%s(%s)-snr", t.Name, wcl.Name, mac),
-					Type:        fmt.Sprintf("%s/wireless/clients/%s-%s/snr", prefix, wcl.Name, mac),
+					Type:        fmt.Sprintf("%s/wireless/clients/%s/%s/snr", prefix, wcl.Name, mac),
 					MetricKind:  metricpb.MetricDescriptor_GAUGE,
 					ValueType:   metricpb.MetricDescriptor_INT64,
 					Unit:        "By{received}/s",

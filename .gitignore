@@ -1,5 +1,11 @@
 files/*
 
+.terraform
+*.tfstate
+*.tfstate.*
+terraform/variables.tfvars
+terraform/credentials.json
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
