@@ -58,7 +58,10 @@ type Extensions struct {
 }
 
 type Mikrotik struct {
-	WirelessClientMACs []string `json:"WirelessClientMACs"`
+	WirelessClients []struct {
+		Name string `json:"Name"`
+		MAC  string `json:"MAC"`
+	} `json:"WirelessClientMACs"`
 }
 
 func (t *Target) UnmarshalJSON(data []byte) error {

@@ -98,6 +98,7 @@ type Wireless struct {
 }
 
 type WirelessClient struct {
+	Name           string
 	MAC            string
 	SNR            *big.Int
 	SignalStrength *big.Int

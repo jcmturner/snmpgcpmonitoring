@@ -1,7 +1,6 @@
 package collect
 
 import (
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -262,13 +261,14 @@ func Mikrotik(t *target.Target, verbose bool) error {
 		mikrotikWirelessClientCount + mikrotikWirelessOIDSuffix,
 		mikrotikWirelessOverallCCQ + mikrotikWirelessOIDSuffix,
 	}
-	for _, mac := range t.Extensions.Mikrotik.WirelessClientMACs {
-		macoid, err := macToOidTail(mac)
+	for _, wcl := range t.Extensions.Mikrotik.WirelessClients {
+		macoid, err := macToOidTail(wcl.MAC)
 		if err != nil {
 			return err
 		}
 		t.Wireless.ClientConnections[macoid] = &info.WirelessClient{
-			MAC: strings.ToUpper(mac),
+			Name: wcl.Name,
+			MAC:  strings.ToUpper(wcl.MAC),
 		}
 		oid = append(oid, fmt.Sprintf("%s.%s%s", mikrotikWirelessClientSignalStrength, macoid, mikrotikWirelessOIDSuffix))
 		oid = append(oid, fmt.Sprintf("%s.%s%s", mikrotikWirelessClientSNR, macoid, mikrotikWirelessOIDSuffix))
@@ -316,18 +316,15 @@ func Mikrotik(t *target.Target, verbose bool) error {
 func macToOidTail(mac string) (string, error) {
 	var oid []string
 	for _, h := range strings.Split(mac, ":") {
-		if len(h) > 2 {
+		if len(h) != 2 {
 			return "", fmt.Errorf("invalid mac address at %s", h)
 		}
 		b, err := hex.DecodeString(h)
 		if err != nil {
 			return "", fmt.Errorf("invalid mac address at %s: %v", h, err)
 		}
-		d, n := binary.Uvarint(b)
-		if n != 1 {
-			return "", fmt.Errorf("could not convert hex value %s to decimal", h)
-		}
-		oid = append(oid, strconv.Itoa(int(d)))
+		// b must have just one element as h was checked to be 2 in length
+		oid = append(oid, strconv.Itoa(int(b[0])))
 	}
 	return strings.Join(oid, "."), nil
 }
