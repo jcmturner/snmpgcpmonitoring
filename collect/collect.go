@@ -33,7 +33,6 @@ const (
 	mikrotikWirelessOverallCCQ           = ".1.3.6.1.4.1.14988.1.1.1.3.1.10"
 	mikrotikWirelessClientSignalStrength = ".1.3.6.1.4.1.14988.1.1.1.2.1.3"
 	mikrotikWirelessClientSNR            = ".1.3.6.1.4.1.14988.1.1.1.2.1.12"
-	mikrotikWirelessOIDSuffix            = ".26" // All the OIDs from mikrotik seem to end in this.
 )
 
 func Run(t *target.Target, client *monitoring.MetricClient, wg *sync.WaitGroup, verbose bool) {
@@ -257,9 +256,14 @@ func Mikrotik(t *target.Target, verbose bool) error {
 	if t.Wireless == nil {
 		return errors.New("mikrotik extension not configured for target")
 	}
+	if _, ok := t.Ifaces[t.Extensions.Mikrotik.WirelessInterface]; !ok {
+		return errors.New("could not find wireless interface")
+	}
+	oidSuffix := t.Ifaces[t.Extensions.Mikrotik.WirelessInterface].OIDTail
+
 	oid := []string{
-		mikrotikWirelessClientCount + mikrotikWirelessOIDSuffix,
-		mikrotikWirelessOverallCCQ + mikrotikWirelessOIDSuffix,
+		fmt.Sprintf("%s.%s", mikrotikWirelessClientCount, oidSuffix),
+		fmt.Sprintf("%s.%s", mikrotikWirelessOverallCCQ, oidSuffix),
 	}
 	for _, wcl := range t.Extensions.Mikrotik.WirelessClients {
 		macoid, err := macToOidTail(wcl.MAC)
@@ -270,8 +274,8 @@ func Mikrotik(t *target.Target, verbose bool) error {
 			Name: wcl.Name,
 			MAC:  strings.ToUpper(wcl.MAC),
 		}
-		oid = append(oid, fmt.Sprintf("%s.%s%s", mikrotikWirelessClientSignalStrength, macoid, mikrotikWirelessOIDSuffix))
-		oid = append(oid, fmt.Sprintf("%s.%s%s", mikrotikWirelessClientSNR, macoid, mikrotikWirelessOIDSuffix))
+		oid = append(oid, fmt.Sprintf("%s.%s.%s", mikrotikWirelessClientSignalStrength, macoid, oidSuffix))
+		oid = append(oid, fmt.Sprintf("%s.%s.%s", mikrotikWirelessClientSNR, macoid, oidSuffix))
 	}
 	res, err := t.Client.Get(oid)
 	if err != nil {

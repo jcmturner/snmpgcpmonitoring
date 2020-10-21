@@ -58,7 +58,8 @@ type Extensions struct {
 }
 
 type Mikrotik struct {
-	WirelessClients []struct {
+	WirelessInterface string
+	WirelessClients   []struct {
 		Name string `json:"Name"`
 		MAC  string `json:"MAC"`
 	} `json:"WirelessClientMACs"`
