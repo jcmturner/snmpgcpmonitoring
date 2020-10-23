@@ -270,9 +270,13 @@ func Mikrotik(t *target.Target, verbose bool) error {
 		if err != nil {
 			return err
 		}
-		t.Wireless.ClientConnections[macoid] = &info.WirelessClient{
-			Name: wcl.Name,
-			MAC:  strings.ToUpper(wcl.MAC),
+		if _, ok := t.Wireless.ClientConnections[macoid]; !ok {
+			t.Wireless.ClientConnections[macoid] = &info.WirelessClient{
+				Name:           wcl.Name,
+				MAC:            strings.ToUpper(wcl.MAC),
+				SNR:            big.NewInt(0),
+				SignalStrength: big.NewInt(0),
+			}
 		}
 		oid = append(oid, fmt.Sprintf("%s.%s.%s", mikrotikWirelessClientSignalStrength, macoid, oidSuffix))
 		oid = append(oid, fmt.Sprintf("%s.%s.%s", mikrotikWirelessClientSNR, macoid, oidSuffix))
